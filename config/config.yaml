@@ -1,0 +1,50 @@
+cat_cols:
+  [
+    "work_year",
+    "experience_level",
+    "employment_type",
+    "job_title",
+    "remote_ratio",
+    "company_size",
+    "employee_residence",
+    "company_location",
+  ]
+
+target_col: ["salary_in_usd"]
+
+req_job_titles:
+  [
+    "Data Engineer",
+    "Data Scientist",
+    "Data Analyst",
+    "Machine Learning Engineer",
+    "Analytics Engineer",
+  ]
+req_emp_residences: ["US", "GB", "CA", "IN", "ES"]
+req_company_locations: ["US", "GB", "CA", "IN", "DE"]
+
+experience_level_map : {
+    'SE': 'Senior',
+    'MI': 'Middle',
+    'EN': 'Junior',
+    'EX': 'Executive'
+}
+
+employment_type_map : {
+    'FT': 'Full Time',
+    'CT': 'Contract',
+    'FL': 'Freelance',
+    'PT': 'Part Time'
+}
+
+remote_ratio_map : {
+    0: 'Not Remote',
+    50: 'Half Remote',
+    100: 'Full Remote'
+}
+
+company_size_map : {
+    'L': 'Large',
+    'S': 'Small',
+    'M': 'Medium'
+}
