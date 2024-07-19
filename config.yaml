@@ -1,3 +1,7 @@
+model_name : 'salary_pred_reg_model'
+version : 1
+
+
 cat_cols:
   [
     "work_year",
@@ -24,10 +28,10 @@ req_emp_residences: ["US", "GB", "CA", "IN", "ES"]
 req_company_locations: ["US", "GB", "CA", "IN", "DE"]
 
 experience_level_map : {
-    'SE': 'Senior',
-    'MI': 'Middle',
-    'EN': 'Junior',
-    'EX': 'Executive'
+    'SE': 3,
+    'MI': 2,
+    'EN': 1,
+    'EX': 0
 }
 
 employment_type_map : {
@@ -44,7 +48,7 @@ remote_ratio_map : {
 }
 
 company_size_map : {
-    'L': 'Large',
-    'S': 'Small',
-    'M': 'Medium'
+    'L': 2,
+    'S': 0,
+    'M': 1
 }

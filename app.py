@@ -1,96 +1,115 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import seaborn as sns
-import logging
-from pathlib import Path
-from ordered_set import OrderedSet
-from scipy.stats import chi2_contingency
-import os
-import mlflow
-from sklearn.preprocessing import (
-    StandardScaler,
-    RobustScaler,
-    MinMaxScaler,
-    PowerTransformer,
-    PolynomialFeatures,
-    QuantileTransformer,
-)
-from utiities import read_yaml_from_path
-import warnings
-import pickle
-warnings.filterwarnings("ignore")
+import mlflow.sklearn
+import streamlit as st
+from utilities import config
+from collections import defaultdict
+
+def get_model():
+    # Load the registered model
+    model_name = config.model_name
+    model_version = config.version  # specify the version of the model you want to load
+    model = mlflow.sklearn.load_model(f"models:/{model_name}/{model_version}")
+    return model
 
 
-root = Path("../")
-artifacts = root / "artifacts"
-config_path = root / "config/config.yaml"
-
-config = read_yaml_from_path(config_path)
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-experiment_name = "salary_prediction"
-experiment_id = None
-try:
-    experiment = mlflow.set_experiment(experiment_name)
-    experiment_id = experiment.experiment_id
-except Exception as e:
-    experiment_id = mlflow.create_experiment(experiment_name)
-
-mlflow.autolog()
-
-dataset_path = artifacts / "ds_salaries.csv"
-
-model = pickle.load(artifacts / 'model.pkl')
-
-def read_dataset(path: Path):
-    dataset = pd.read_csv(path, low_memory=False)
-    logger.info(f"dataset is read from {artifacts}")
-    logger.info(f"Total rows available {dataset.shape[0]}")
-    return dataset
+def predict(model, values: list):
+    import pandas as pd
+    columns = [
+        "work_year",
+        "experience_level",
+        "employment_type",
+        "job_title",    
+        "remote_ratio",
+        "company_size",
+        "emp_residence_company_location"
+    ]
+    input_df = pd.DataFrame([values], columns=columns)
+    return model.predict(input_df)
 
 
-def preprocessor(dataset):
-    dataset = dataset.drop_duplicates()
-    cat_cols = config.cat_cols
-    num_cols = config.target_col
-
-    for col in cat_cols:
-        dataset[col] = pd.Categorical(dataset[col])
-
-    for col in num_cols:
-        dataset[col] = pd.to_numeric(dataset[col])
-
-    dataset = dataset[cat_cols + num_cols]
-
-    dataset['experience_level'] = dataset['experience_level'].map(config.experience_level_map)
-    dataset['employment_type'] = dataset['employment_type'].map(config.employment_type_map)
-    dataset['company_size'] = dataset['company_size'].map(config.company_size_map)
-    dataset['remote_ratio'] = dataset['remote_ratio'].map(config.remote_ratio_map)
-
-
-    dataset["job_title"] = dataset["job_title"].apply(
-        lambda x: x if x in config.req_job_titles else "Others"
-    )
-    dataset["employee_residence"] = dataset["employee_residence"].apply(
-        lambda x: x if x in config.req_emp_residences else "Others"
-    )
-    dataset["company_location"] = dataset["company_location"].apply(
-        lambda x: x if x in config.req_company_locations else "Others"
+def create_streamlit_ui():
+    st.sidebar.title("Model Prediction")
+    st.sidebar.write(
+        "This application allows you to predict salary based on various features."
     )
 
-    dataset["emp_residence_company_location"] = (
-        dataset["employee_residence"] + "_" + dataset["company_location"]
+    st.title("Salary Prediction")
+    st.markdown(
+        """
+        <style>
+        .main {
+            background-color: #333333;
+            color: #f0f2f6;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
-    return dataset
 
+    # Input fields for numerical and categorical inputs
+    st.header("Input Features")
+    st.subheader("Please provide the following details:")
 
-def predict(*values):
-    return model.predict(values)
+    work_year = st.selectbox("Work Year", [2020, 2021, 2022], index=2)
+    
+    d1 = defaultdict(lambda : 'Others',{
+        'Large':"L",
+        'Small':"S",
+        'Medium':"M"
+    })
+    
+    d2 = defaultdict(lambda: "Others", {
+        'Senior':"SE",
+        'Mid-Level':"MI",
+        'Entry-Level':"EN",
+        'Executive':"EX"
+    })
+    
+    d3 = defaultdict(lambda: "Others",{
+        'Full-time':"FT",
+        'Contract':"CT",
+        'Freelance':"FL",
+        'Part-Time':"PT"
+    })
+    
+    experience_level = d2.get(st.selectbox("Experience Level", ["Senior", "Mid-Level", "Entry-Level", "Executive"], index=0))
+    employment_type = d3.get(st.selectbox("Employment Type", ["Full-time", "Contract", "Freelance", "Part-Time"], index=0))
+    job_title = st.selectbox(
+        "Job Title",
+        [
+            "Data Engineer",
+            "Data Scientist",
+            "Data Analyst",
+            "Machine Learning Engineer",
+            "Analytics Engineer",
+            "Others",
+        ],
+        index=0,
+    )
+    
+    
+    remote_ratio = st.select_slider("Remote %", options=[0, 50, 100], value=50)
+    company_size = d1.get(st.radio("Company Size", ["Large", "Small", "Medium"], index=0))
+    
+    employee_residence = st.selectbox(
+        "Employee Residence", ["US", "GB", "CA", "IN", "ES", "Others"], index=0
+    )
+    company_location = st.selectbox(
+        "Company Location", ["US", "GB", "CA", "IN", "DE", "Others"], index=0
+    )
+    emp_residence_company_location = employee_residence + '_' + company_location
 
+    if st.button("Predict"):
+        model = get_model()
+        input_data = [
+            work_year,
+            experience_level,
+            employment_type,
+            job_title,
+            remote_ratio,
+            company_size,
+            emp_residence_company_location  
+        ]
+        prediction = predict(model, input_data)
+        st.success(f"Predicted Salary: ${prediction[0]:,.2f}")
 
+create_streamlit_ui()
